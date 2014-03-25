@@ -127,13 +127,12 @@ func PlayAndWait(path string) {
 	for {
 		select {
 		case <-Stopped:
-			break
+			EmitStopSignal = false
+			return
 		case <-ticker:
 			Input <- "get_property path"
 		}
 	}
-
-	EmitStopSignal = false
 }
 
 // Play the given file and block until the file is done playing. This function
