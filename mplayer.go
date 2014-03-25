@@ -117,7 +117,7 @@ func SendCommand(msg string) {
 
 // Play the given file and block until the file is done playing.
 func PlayAndWait(path string) {
-	Input <- "loadfile "+path
+	SendCommand("loadfile "+path)
 	EmitStopSignal = true
 
 	// Send a query for the path every seconds. The response is expected in
@@ -130,7 +130,7 @@ func PlayAndWait(path string) {
 			EmitStopSignal = false
 			return
 		case <-ticker:
-			Input <- "get_property path"
+			SendCommand("get_property path")
 		}
 	}
 }
@@ -140,7 +140,7 @@ func PlayAndWait(path string) {
 func PlayAndWaitWithDuration(path string, duration time.Duration) {
 	go func() {
 		time.Sleep(duration)
-		Input <- "quit"
+		SendCommand("stop")
 	}()
 
 	PlayAndWait(path)
