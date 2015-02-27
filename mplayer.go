@@ -1,35 +1,55 @@
 // Copyright 2014, Bertrand Janin <b@janin.com>. All Rights Reserved.
 // Use of this source code is governed by the ISC license in the LICENSE file.
+//
+// All the commands available to an MPlayer slave process are available in the
+// MPlayer docs folder, also available online:
+//
+//     http://www.mplayerhq.hu/DOCS/tech/slave.txt
+//
 
 package mplayer
 
 import (
 	"bufio"
+	"io"
 	"os/exec"
-	"time"
 	"strings"
+	"time"
 )
 
-const (
-	RestartTimeout = 10 * time.Second
-)
+// MPlayer represents a single MPlayer slave process running.
+type MPlayer struct {
+	// Input is used to feed the slave subprocess commands.
+	Input chan string
+
+	// MPlayer has stopped playing.
+	stoppedCh chan bool
+
+	// hasStopSignalListeners signals that there are listened for the Stop
+	// signal emitted
+	hasStopSignalListeners bool
+}
 
 var (
-	// Channel used to feed the subprocess.
+	// Input is used to feed the slave subprocess commands.
 	Input = make(chan string)
 
 	// MPlayer has stopped playing.
-	Stopped = make(chan bool)
+	stoppedCh = make(chan bool)
 
-	// If this is true, someone is listening to the Stopped channel.
-	EmitStopSignal = false
+	// hasStopSignalListeners signals that there are listened for the Stop
+	// signal emitted
+	hasStopSignalListeners = false
 )
 
 // Type of the function being passed to the StartSlave as error handler.
 type ErrorHandler func(error)
 
-// Routine transferring the stdout of MPlayer to a proper channel.
-func handleMplayerOutput(bufReader *bufio.Reader) {
+// readOutput is a go routine transferring the stdout of MPlayer to a proper
+// channel.
+func readOutput(reader io.Reader) {
+	bufReader := bufio.NewReader(reader)
+
 	for {
 		msg, err := bufReader.ReadString('\n')
 		if err != nil {
@@ -38,12 +58,11 @@ func handleMplayerOutput(bufReader *bufio.Reader) {
 		}
 		msg = strings.TrimSpace(msg)
 
-		// This is quite hackish but works alright for now. When
-		// PlayAndWait is used, we send a "get_property path" to
-		// MPlayer every seconds. If the response is ever that nothing
+		// When PlayAndWait is used, we send a "get_property path" to
+		// MPlayer every seconds.  If the response is ever that nothing
 		// is player anymore, we shutdown the player.
-		if EmitStopSignal && msg == "ANS_path=(null)" {
-			Stopped <- true
+		if hasStopSignalListeners && msg == "ANS_path=(null)" {
+			stoppedCh <- true
 		}
 	}
 }
@@ -62,14 +81,13 @@ func runProcess() error {
 	if err != nil {
 		return err
 	}
-	bufReader := bufio.NewReader(reader)
 
 	err = cmd.Start()
 	if err != nil {
 		return err
 	}
 
-	go handleMplayerOutput(bufReader)
+	go readOutput(reader)
 
 	for msg := range Input {
 		_, err = writer.Write([]byte(msg + "\n"))
@@ -83,19 +101,23 @@ func runProcess() error {
 	return err
 }
 
-// Continuously restart MPlayer. If any error occurs, wait a moment before
-// restarting.
+// keepSlaveAlive is a loop keeping at least one instance of MPlayer going
+// continuously.  If a process exists a new one is created, possibly with a
+// delay if the previous one exited with an error.  If you want some reporting
+// to happen, you need to define an error handler.
 func keepSlaveAlive(errorHandler ErrorHandler) {
 	for {
 		err := runProcess()
 
-		if EmitStopSignal {
-			Stopped <- true
+		if hasStopSignalListeners {
+			stoppedCh <- true
 		}
 
 		if err != nil {
-			errorHandler(err)
-			time.Sleep(RestartTimeout)
+			if errorHandler != nil {
+				errorHandler(err)
+			}
+			time.Sleep(10 * time.Second)
 		}
 	}
 }
@@ -113,35 +135,4 @@ func StartSlave(errorHandler ErrorHandler) {
 // Feed the MPlayer slave with input commands.
 func SendCommand(msg string) {
 	Input <- msg
-}
-
-// Play the given file and block until the file is done playing.
-func PlayAndWait(path string) {
-	SendCommand("loadfile "+path)
-	EmitStopSignal = true
-
-	// Send a query for the path every seconds. The response is expected in
-	// handleMplayerOutput.
-	ticker := time.Tick(time.Second)
-
-	for {
-		select {
-		case <-Stopped:
-			EmitStopSignal = false
-			return
-		case <-ticker:
-			SendCommand("get_property path")
-		}
-	}
-}
-
-// Play the given file and block until the file is done playing. This function
-// will also stop playing after the given duration.
-func PlayAndWaitWithDuration(path string, duration time.Duration) {
-	go func() {
-		time.Sleep(duration)
-		SendCommand("stop")
-	}()
-
-	PlayAndWait(path)
 }
