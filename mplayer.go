@@ -17,19 +17,6 @@ import (
 	"time"
 )
 
-// MPlayer represents a single MPlayer slave process running.
-type MPlayer struct {
-	// Input is used to feed the slave subprocess commands.
-	Input chan string
-
-	// MPlayer has stopped playing.
-	stoppedCh chan bool
-
-	// hasStopSignalListeners signals that there are listened for the Stop
-	// signal emitted
-	hasStopSignalListeners bool
-}
-
 var (
 	// Input is used to feed the slave subprocess commands.
 	Input = make(chan string)
@@ -41,9 +28,6 @@ var (
 	// signal emitted
 	hasStopSignalListeners = false
 )
-
-// Type of the function being passed to the StartSlave as error handler.
-type ErrorHandler func(error)
 
 // readOutput is a go routine transferring the stdout of MPlayer to a proper
 // channel.
@@ -122,9 +106,9 @@ func keepSlaveAlive(errorHandler ErrorHandler) {
 	}
 }
 
-// Keep an mplayer process in slave mode open for the rest of time, consuming
-// input from the mplayerInput channel and feeding it to the stdin of the
-// process. If the process dies it is restarted automatically.
+// StartSlave keeps an mplayer process in slave mode open for the rest of time,
+// consuming input from the mplayerInput channel and feeding it to the stdin of
+// the process. If the process dies it is restarted automatically.
 //
 // You are required to define an error handler function that will be called
 // with all the errors that could have occured managing the slave.
@@ -132,7 +116,7 @@ func StartSlave(errorHandler ErrorHandler) {
 	go keepSlaveAlive(errorHandler)
 }
 
-// Feed the MPlayer slave with input commands.
+// SendCommand feeds the MPlayer slave with input commands.
 func SendCommand(msg string) {
 	Input <- msg
 }

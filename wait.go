@@ -18,12 +18,12 @@ var (
 	skipCh = make(chan bool)
 )
 
-// Attempt to cancel an existing PlayAndWait.
+// Skip attempts to cancel an existing PlayAndWait.
 func Skip() {
 	skipCh <- true
 }
 
-// Play the given file and block until the file is done playing.
+// PlayAndWait loads the given file and block until the file is done playing.
 func PlayAndWait(path string) {
 	SendCommand("loadfile " + path)
 	hasStopSignalListeners = true
@@ -47,8 +47,8 @@ func PlayAndWait(path string) {
 	}
 }
 
-// Play the given file and block until the file is done playing. This function
-// will also stop playing after the given duration.
+// PlayAndWaitWithDuration loads the given file and block until the file is
+// done playing.  This function will also stop playing after the given duration.
 func PlayAndWaitWithDuration(path string, duration time.Duration) {
 	go func() {
 		time.Sleep(duration)
