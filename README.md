@@ -3,9 +3,7 @@
 Short module allowing the user to control a fork'd MPlayer process in
 slave-mode.
 
-You can read all about the MPlayer slave protocol at this address:
-
-	http://www.mplayerhq.hu/DOCS/tech/slave.txt
+You can read all about the MPlayer slave protocol at [mplayerhq.hu](http://www.mplayerhq.hu/DOCS/tech/slave.txt)
 
 
 ## Requirements
@@ -16,7 +14,7 @@ MPlayer should be installed and available in the current PATH
 This example launches MPlayer in the background, requests it to play a file,
 wait for 5 seconds then stop playback:
 
-```
+```go
 import (
 	"time"
 	"github.com/tamentis/go-mplayer"
@@ -33,7 +31,7 @@ This example uses the blocking command PlayAndWait(), it allows you to use the
 module in a similar fashion to `os/exec` except that you can pre-load the
 process to get a better response time (e.g. on slow hardware):
 
-```
+```go
 import (
 	"github.com/tamentis/go-mplayer"
 )
