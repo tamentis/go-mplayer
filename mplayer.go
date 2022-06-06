@@ -89,7 +89,7 @@ func runProcess() error {
 // continuously.  If a process exists a new one is created, possibly with a
 // delay if the previous one exited with an error.  If you want some reporting
 // to happen, you need to define an error handler.
-func keepSlaveAlive(errorHandler ErrorHandler) {
+func keepSlaveAlive(errorHandler func(...interface{})) {
 	for {
 		err := runProcess()
 
@@ -112,7 +112,7 @@ func keepSlaveAlive(errorHandler ErrorHandler) {
 //
 // You are required to define an error handler function that will be called
 // with all the errors that could have occured managing the slave.
-func StartSlave(errorHandler ErrorHandler) {
+func StartSlave(errorHandler func(...interface{})) {
 	go keepSlaveAlive(errorHandler)
 }
 
